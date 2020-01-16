@@ -1,9 +1,12 @@
 package com.tvlk.advDemo.controller;
 
 
+import com.tvlk.advDemo.model.DeptEmpDTO;
 import com.tvlk.advDemo.model.Employee;
+import com.tvlk.advDemo.pojo.EmployeeFilter;
 import com.tvlk.advDemo.repository.EmployeeRepository;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.data.jpa.repository.Query;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
@@ -25,13 +28,18 @@ public class EmployeeController {
         return employeeRepository.findAll();
     }
 
+    @PostMapping(path = "/filter", consumes = {"application/json"})
+    public List<Employee> getEmployeeByFilter(@Valid @RequestBody EmployeeFilter filter){
+        return employeeRepository.findByDesignationAndDeptId(filter.getDesignation(), filter.getDeptId());
+    }
+
     @GetMapping("/{id}")
     public Optional<Employee> getEmployeeById(@PathVariable(value = "id") long employeeId)
     {
         return employeeRepository.findById(employeeId);
     }
 
-    @PostMapping
+    @PostMapping(consumes = {"application/json"})
     public Employee createEmployee(@Valid @RequestBody Employee employee) {
         return employeeRepository.save(employee);
     }
