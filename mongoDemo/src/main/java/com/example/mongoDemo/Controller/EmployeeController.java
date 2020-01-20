@@ -1,10 +1,21 @@
-package com.tvlk.advDemo.controller;
+package com.example.mongoDemo.Controller;
 
-import com.tvlk.advDemo.model.Employee;
-import com.tvlk.advDemo.pojo.EmployeeFilter;
-import com.tvlk.advDemo.repository.EmployeeRepository;
+import com.example.mongoDemo.Repository.DepartmentRepository;
+import com.example.mongoDemo.Repository.EmployeeAggregateRepository;
+import com.example.mongoDemo.Repository.EmployeeRepository;
+import com.example.mongoDemo.entity.Department;
+import com.example.mongoDemo.entity.Employee;
+import com.example.mongoDemo.entity.EmployeeAggregate;
+import com.example.mongoDemo.pojo.EmployeeFilter;
+import com.mongodb.MongoClient;
+import com.mongodb.session.ClientSession;
+import org.bson.types.ObjectId;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.orm.jpa.hibernate.SpringImplicitNamingStrategy;
+import org.springframework.transaction.annotation.Isolation;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.bind.annotation.*;
+
 import javax.validation.Valid;
 import java.util.HashMap;
 import java.util.List;
@@ -14,8 +25,15 @@ import java.util.Optional;
 @RestController
 @RequestMapping("/employees")
 public class EmployeeController {
+
     @Autowired
     private EmployeeRepository employeeRepository;
+
+    @Autowired
+    private DepartmentRepository departmentRepository;
+
+    @Autowired
+    private EmployeeAggregateRepository employeeAggregateRepository;
 
     @GetMapping
     public List<Employee> getAllEmployees()
@@ -34,9 +52,22 @@ public class EmployeeController {
         return employeeRepository.findById(employeeId);
     }
 
+    @Transactional(rollbackFor = NullPointerException.class)
     @PostMapping(consumes = {"application/json"})
     public Employee createEmployee(@Valid @RequestBody Employee employee) {
-        return employeeRepository.save(employee);
+        Optional<Department> departmentOptional = departmentRepository.findById(employee.getDeptId());
+        MongoClient client = new MongoClient();
+        ClientSession session = client.startSession();
+        EmployeeAggregate employeeAggregate = employeeAggregateRepository.findAll().get(0);
+        employeeAggregate.setTotalEmployeeCount(employeeAggregate.getTotalEmployeeCount()+1);
+        employeeAggregateRepository.save(employeeAggregate);
+        if(departmentOptional.isPresent()) {
+            Department department = departmentOptional.get();
+            return employeeRepository.save(employee);
+        }
+        else{
+            throw new NullPointerException();
+        }
     }
 
     @PutMapping("/{id}")
